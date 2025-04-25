@@ -48,7 +48,7 @@ func Worker(mapf func(string, string) []KeyValue,
 		reply := Reply{}
 
 		if ok := GetTask(&args, &reply); !ok {
-			break // RPC 失败，退出
+			continue
 		}
 
 		if reply.AllFinish {
@@ -69,8 +69,8 @@ func Worker(mapf func(string, string) []KeyValue,
 			// fmt.Printf("Task %d failed: %v\n", reply.TaskID, err)
 			reportArgs := ReportArgs{
 				TaskType: reply.TaskType,
-				TaskID: reply.TaskID,
-				Done:   false,
+				TaskID:   reply.TaskID,
+				Done:     false,
 			}
 			ReportTask(&reportArgs)
 		}

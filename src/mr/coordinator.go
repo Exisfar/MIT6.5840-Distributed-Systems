@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/rpc"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 )
@@ -153,32 +154,25 @@ func (c *Coordinator) ReportHandler(args *ReportArgs, reply *ReportReply) error 
 	defer c.mu.Unlock()
 
 	if args.Done {
-		c.completed += 1
 		if args.TaskType == 0 {
-			c.mapTasks[args.TaskID].SetTaskState(TaskStateDone)
+			if c.mapTasks[args.TaskID].GetTaskState() == TaskStateRunning {
+				c.mapTasks[args.TaskID].SetTaskState(TaskStateDone)
+				c.completed++
+			}
 		} else {
-			c.reduceTasks[args.TaskID].SetTaskState(TaskStateDone)
+			if c.reduceTasks[args.TaskID].GetTaskState() == TaskStateRunning {
+				c.reduceTasks[args.TaskID].SetTaskState(TaskStateDone)
+				c.completed++
+			}
 		}
 	} else {
 		// 失败的任务重新加入队列
 		if args.TaskType == 0 {
-			// c.mapTasks[args.TaskID].SetTaskState(TaskStateIdle)
-			// c.tasksChan <- c.mapTasks[args.TaskID]
-			task, exists := c.mapTasks[args.TaskID]
-			if exists {
-				task.SetTaskState(TaskStateDone)
-			} else {
-				log.Printf("Warning: Map task %d not found\n", args.TaskID)
-			}
+			c.mapTasks[args.TaskID].SetTaskState(TaskStateIdle)
+			c.tasksChan <- c.mapTasks[args.TaskID]
 		} else {
-			// c.reduceTasks[args.TaskID].SetTaskState(TaskStateIdle)
-			// c.tasksChan <- c.reduceTasks[args.TaskID]
-			task, exists := c.reduceTasks[args.TaskID]
-			if exists {
-				task.SetTaskState(TaskStateDone)
-			} else {
-				log.Printf("Warning: Reduce task %d not found\n", args.TaskID)
-			}
+			c.reduceTasks[args.TaskID].SetTaskState(TaskStateIdle)
+			c.tasksChan <- c.reduceTasks[args.TaskID]
 		}
 	}
 
@@ -192,9 +186,9 @@ func (c *Coordinator) ReportHandler(args *ReportArgs, reply *ReportReply) error 
 		// Dispatch Reduce tasks
 		for i := 0; i < c.nReduce; i++ {
 			// 在创建Reduce任务前收集文件
-			files := []string{}
-			for j := 0; j < len(c.files); j++ {
-				files = append(files, fmt.Sprintf("mr-%d-%d", j, i))
+			files, err := filepath.Glob(fmt.Sprintf("mr-*-%d", i))
+			if err != nil {
+				return fmt.Errorf("glob failed: %v", err)
 			}
 
 			task := &ReduceTask{

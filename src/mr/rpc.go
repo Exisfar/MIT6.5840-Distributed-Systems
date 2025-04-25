@@ -27,18 +27,18 @@ type Args struct {
 }
 
 type Reply struct {
-	TaskType int
-	TaskID int
-	FileName string // Map 任务需要的文件名
-	Files []string // Reduce 任务需要的文件列表
-	NReduce int
+	TaskType  int
+	TaskID    int
+	FileName  string   // Map 任务需要的文件名
+	Files     []string // Reduce 任务需要的文件列表
+	NReduce   int
 	AllFinish bool
 }
 
 type ReportArgs struct {
 	TaskType int
-	TaskID int
-	Done bool
+	TaskID   int
+	Done     bool
 }
 
 type ReportReply struct {
